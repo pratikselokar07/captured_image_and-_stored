@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>  in this first capture image not shows but it is saved in db
+<head>
+    <title>Camera Integration</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+{% csrf_token %}
+
+<div>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="capture">Capture</button>
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+    <div id="preview" style="display: none;">
+        <img id="image" src="" width="640" height="480"/>
+        <button id="save">Save</button>
+        <button id="reset">Reset</button>
+    </div>
+</div>
+<script>
+    $(document).ready(function() {
+        // Get media stream from camera
+        navigator.mediaDevices.getUserMedia({video: true})
+            .then(function(stream) {
+                var video = document.getElementById('video');
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
+
+        // Capture image from video stream
+        $('#capture').on('click', function() {
+            var video = document.getElementById('video');
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            var dataURL = canvas.toDataURL('image/png');
+            var imgBase64 = dataURL.replace(/^data:image\/(png|jpg);base64,/, '');
+
+            $('#preview').show();
+            $('#video').hide();
+            $('#canvas').hide();
+            $('#image').attr('src', dataURL);
+
+            // Save image
+            $('#save').on('click', function() {
+                $.ajax({
+                    url: '/camera/',
+                    method: 'POST',
+                    data: {
+                        'imgBase64': imgBase64
+                    },
+                    success: function(response) {
+                        alert(response);
+                    },
+                    error: function(xhr, status, error) {
+                        console.log(xhr);
+                        console.log(status);
+                        console.log(error);
+                        alert('Error capturing and saving image!');
+                    }
+                });
+            });
+
+            // Reset camera
+            $('#reset').on('click', function() {
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+                canvas.width = 640; // Reset the canvas dimensions
+                canvas.height = 480;
+                $('#preview').hide();
+                $('#video').show();
+                $('#canvas').show();
+                $('#image').attr('src', ''); // Clear the image source attribute
+            });
+        });
+    });
+</script>
+</body>
+</html>
+{% comment %} 
+# def camera(request):
+#     if request.method == 'POST':
+#         img_data = request.POST.get('imgBase64')
+#         if img_data:
+#             img_data = img_data.replace('data:image/png;base64,', '')
+#             img_data = img_data.replace(' ', '+')
+#             img = base64.b64decode(img_data)
+#             img_name = os.path.join(settings.MEDIA_ROOT, 'photo.png')
+#             with open(img_name, 'wb') as f:
+#                 f.write(img)
+#             return render(request, 'camera.html')
+#     return render(request, 'camera.html') #Working properly
+
+# def camera(request):
+#     if request.method == 'POST':
+#         img_data = request.POST.get('imgBase64')
+#         if img_data:
+#             img_data = img_data.replace('data:image/png;base64,', '')
+#             img_data = img_data.replace(' ', '+')
+#             img = base64.b64decode(img_data)
+#             img_name = str(uuid.uuid4()) + '-' + datetime.now().strftime('%Y%m%d%H%M%S%f') + '.png'
+#             img_path = os.path.join(os.getcwd(), 'myapp', 'media', img_name)
+#             with open(img_path, 'wb') as f:
+#                 f.write(img)
+#             return render(request, 'camera.html')
+    # return render(request, 'camera.html') #This is main {% endcomment %}

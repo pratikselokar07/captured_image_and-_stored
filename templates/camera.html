@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Integration</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    {% csrf_token %}
+    <div>
+        <video id="video" width="640" height="480" autoplay></video>
+        <button id="capture">Capture</button>
+        <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+        <div id="preview" style="display: none;">
+            <img id="image" src="" width="640" height="480"/>
+            <button id="save">Save</button>
+            <button id="reset">Reset</button>
+        </div>
+    </div>
+    <script>
+        $(document).ready(function() {
+            var captured = false;
+            var imgBase64 = '';
+
+            // Media stream from camera
+            navigator.mediaDevices.getUserMedia({video: true})
+                .then(function(stream) {
+                    var video = document.getElementById('video');
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(function(err) {
+                    console.log(err);
+                });
+
+            // Capture image from video stream
+            $('#capture').on('click', function() {
+                var video = document.getElementById('video');
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, 640, 480);
+                var dataURL = canvas.toDataURL('image/png');
+                imgBase64 = dataURL.replace(/^data:image\/(png|jpg);base64,/, '');
+
+                $('#preview').show();
+                $('#video').hide();
+                $('#canvas').hide();
+                $('#image').attr('src', dataURL);
+                captured = true;
+            });
+
+            // Save image
+            $('#save').on('click', function() {
+                if (captured) {
+                    $.ajax({
+                        url: '/camera/',
+                        method: 'POST',
+                        data: {
+                            'imgBase64': imgBase64
+                        },
+                        success: function(response) {
+                            alert(response);
+                            location.reload()
+                        },
+                        error: function(xhr, status, error) {
+                            console.log(xhr);
+                            console.log(status);
+                            console.log(error);
+                            alert('Error capturing and saving image!');
+                        }
+                    });
+                    captured = false;
+                }
+            });
+            // Reset camera
+            $('#reset').on('click', function() {
+                if (captured) {
+                    captured = false;
+                    $('#preview').hide();
+                    $('#video').show();
+                    $('#canvas').show();
+                    $('#image').attr('src', '');
+                } else {
+                    $('#preview').hide();
+                    $('#video').show();
+                    $('#canvas').show();
+                }
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                context.clearRect(0, 0, canvas.width, canvas.height);
+            });
+        });
+    </script>
+</body>
+</html>
